@@ -46,10 +46,10 @@ const currentIndex = Math.max(0, doors.findIndex((d) => d.current))
             </>
           ) : (
             <>
-              <text x="60" y="52" text-anchor="middle" class="glass-text">
+              <text x="60" y="52" text-anchor="middle" class="glass-text" textLength={d.title.split(' ').slice(0, 2).join(' ').length > 11 ? 72 : undefined} lengthAdjust="spacingAndGlyphs">
                 {d.title.split(' ').slice(0, 2).join(' ')}
               </text>
-              <text x="60" y="68" text-anchor="middle" class="glass-text">
+              <text x="60" y="68" text-anchor="middle" class="glass-text" textLength={d.title.split(' ').slice(2).join(' ').length > 11 ? 72 : undefined} lengthAdjust="spacingAndGlyphs">
                 {d.title.split(' ').slice(2).join(' ')}
               </text>
             </>
@@ -87,7 +87,7 @@ const currentIndex = Math.max(0, doors.findIndex((d) => d.current))
 <style>
   .corridor {
     position: relative;
-    padding: 18px 12px 14px;
+    padding: 28px 20px 18px;
     background: linear-gradient(180deg, var(--plaster-2), var(--plaster) 70%);
     border-top: 1px solid var(--rule);
     border-bottom: 3px solid var(--desk);
@@ -99,7 +99,7 @@ const currentIndex = Math.max(0, doors.findIndex((d) => d.current))
     left: 0;
     right: 0;
     bottom: 0;
-    height: 78px;
+    height: 96px;
     background: var(--dado);
     border-top: 3px solid #35493a;
   }
@@ -108,8 +108,8 @@ const currentIndex = Math.max(0, doors.findIndex((d) => d.current))
     margin: 0;
     padding: 0;
     display: grid;
-    grid-template-columns: repeat(7, minmax(120px, 1fr));
-    gap: 10px;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 14px;
     position: relative;
   }
   .door {
@@ -125,7 +125,8 @@ const currentIndex = Math.max(0, doors.findIndex((d) => d.current))
     opacity: 1;
   }
   .door svg {
-    width: 112px;
+    width: 100%;
+    max-width: 156px;
     height: auto;
     filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.25));
   }
@@ -147,22 +148,22 @@ const currentIndex = Math.max(0, doors.findIndex((d) => d.current))
   }
   .glass-text {
     font-family: 'Special Elite', monospace;
-    font-size: 9px;
+    font-size: 9.5px;
     fill: #1b1916;
     text-transform: uppercase;
     letter-spacing: 0.04em;
   }
   .plate {
     font-family: 'Special Elite', monospace;
-    font-size: 8px;
+    font-size: 9px;
     fill: #1b1916;
   }
   .door-label {
     font-family: var(--serif);
     font-weight: 700;
-    font-size: 13px;
+    font-size: 17px;
     line-height: 1.15;
-    margin-top: 14px;
+    margin-top: 18px;
     color: var(--paper);
     position: relative;
     z-index: 1;
@@ -170,23 +171,23 @@ const currentIndex = Math.max(0, doors.findIndex((d) => d.current))
   }
   .door-motto {
     font-family: var(--type);
-    font-size: 10px;
-    line-height: 1.25;
+    font-size: 12px;
+    line-height: 1.3;
     color: var(--paper);
     opacity: 0.8;
     position: relative;
     z-index: 1;
-    max-width: 130px;
-    min-height: 26px;
+    max-width: 170px;
+    min-height: 34px;
   }
   .compact .dado {
     height: 40px;
   }
   .paper {
     position: absolute;
-    top: 118px;
-    left: calc(12px + (100% - 24px - 60px) / 7 * var(--i) + (100% - 24px) / 14 - 16px);
-    width: 40px;
+    top: 160px;
+    left: calc(20px + (100% - 40px - 84px) / 7 * var(--i) + (100% - 40px) / 14 - 24px);
+    width: 52px;
     transition: left 700ms cubic-bezier(0.4, 0, 0.2, 1);
     filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.35));
     z-index: 2;
@@ -210,12 +211,12 @@ const currentIndex = Math.max(0, doors.findIndex((d) => d.current))
     top: 80px;
     width: 28px;
   }
-  @media (max-width: 760px) {
+  @media (max-width: 900px) {
     .doors {
-      grid-template-columns: repeat(7, 118px);
+      grid-template-columns: repeat(7, 150px);
     }
     .paper {
-      left: calc(12px + 128px * var(--i) + 40px);
+      left: calc(20px + 164px * var(--i) + 50px);
     }
   }
   @media (prefers-reduced-motion: reduce) {

@@ -91,6 +91,11 @@ export function FileView({
 
   if (!instance) return <Status text="This file is not in the cabinet." />
   const fields = fieldsOf(instance)
+  // The Minister's deadline is a stage scoped field on the current visit. Past it, the
+  // Department of Delays hands the file to the Archive on the next tick.
+  const currentVisit = instance.stages[instance.stages.length - 1]
+  const deadlineValue = instance.currentStage === 'minister-review' ? currentVisit?.fields.find((f) => f.name === 'deadline')?.value : undefined
+  const deadline = typeof deadlineValue === 'string' ? deadlineValue : undefined
   const subjectUri = (fields.subject as {id?: string} | undefined)?.id ?? ''
   const subjectId = subjectUri.slice(subjectUri.lastIndexOf(':') + 1)
 
@@ -107,6 +112,14 @@ export function FileView({
         <Badge tone={instance.completedAt ? 'positive' : 'primary'}>{stageLabel(instance.currentStage)}</Badge>
         {typeof fields.lostCount === 'number' && fields.lostCount > 0 ? (
           <Badge tone="caution">lost {fields.lostCount}x</Badge>
+        ) : null}
+        {typeof fields.delays === 'number' && fields.delays > 0 ? (
+          <Badge tone="critical">delayed {fields.delays}x</Badge>
+        ) : null}
+        {deadline ? (
+          <Badge tone={Date.parse(deadline) < Date.now() ? 'critical' : 'primary'} mode="outline">
+            rule by {new Date(deadline).toUTCString().replace(' GMT', ' UTC')}
+          </Badge>
         ) : null}
         <Text size={0} muted>
           {instance._id}

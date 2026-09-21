@@ -1,18 +1,22 @@
 ---
 import Layout from '../layouts/Layout.astro'
 import Corridor from '../components/Corridor.astro'
-import {content, loadDepartments} from '../lib/ministry'
+import Certificate, {type CertificateData} from '../components/Certificate.astro'
+import {CERTIFICATE_PROJECTION, content, loadDepartments} from '../lib/ministry'
 
 export const prerender = false
 
 const departments = await loadDepartments()
-const counts = await content.fetch<{certified: number; lost: number; open: number}>(
-  `{
-    "certified": count(*[_type == "certificate"]),
-    "lost": count(*[_type == "receipt"]),
-    "open": count(*[_type == "sanity.workflow.instance" && tag == "prod" && !defined(completedAt)])
-  }`,
-)
+const [counts, latest] = await Promise.all([
+  content.fetch<{certified: number; lost: number; open: number}>(
+    `{
+      "certified": count(*[_type == "certificate"]),
+      "lost": count(*[_type == "receipt"]),
+      "open": count(*[_type == "sanity.workflow.instance" && tag == "prod" && !defined(completedAt)])
+    }`,
+  ),
+  content.fetch<CertificateData | null>(`*[_type == "certificate"] | order(issuedAt desc)[0]${CERTIFICATE_PROJECTION}`),
+])
 const error = Astro.url.searchParams.get('error')
 const clerks = departments.filter((d) => d.clerk)
 ---
@@ -24,24 +28,20 @@ const clerks = departments.filter((d) => d.clerk)
       <h1>Submit anything.<br />We will approve it.<br /><em>Eventually.</em></h1>
       <p class="lede">
         A meme, a name for your cat, a plan, a complaint about the plan. Every submission walks the same corridor: three
-        departments staffed by AI clerks with opinions, then a human Minister, then a certificate on the public wall. The
-        Archive loses every third form. The Minister has one hour to rule or the Archive gets it back. This is a feature.
+        departments staffed by AI clerks with opinions, then a human Minister, then a certificate on the public wall.
       </p>
+      <p class="lede">The Archive loses every third form. The Minister has one hour to rule or the Archive gets it back. This is a feature.</p>
       <p class="counts type">
         <span>{counts.open} in the corridor</span>
         <span>{counts.certified} certified</span>
         <span>{counts.lost} lost and receipted</span>
       </p>
     </div>
-  </section>
 
-  <Corridor departments={departments} currentStage="intake" visits={[]} />
-
-  <section class="desk">
     <form class="sheet form-sheet" method="post" action="/api/submit" enctype="multipart/form-data">
       <div class="sheet-head">
         <div>
-          <p class="eyebrow">Form MoA-1 · Application for Approval</p>
+          <p class="eyebrow">Form MoA-1 · Application for approval</p>
           <h2>File a submission</h2>
         </div>
         <span class="serial-box">No. ____</span>
@@ -70,156 +70,214 @@ const clerks = departments.filter((d) => d.clerk)
       </div>
       <div class="field">
         <label for="body">The submission</label>
-        <textarea id="body" name="body" required maxlength="2000" placeholder="Describe it. The Department of Pedantry will want a date, a reason and a signature. It will not tell you which one until you are missing it."></textarea>
+        <textarea id="body" name="body" required maxlength="2000" rows="5" placeholder="Describe it. Pedantry will want a date, a reason and a signature. It will not tell you which one until you are missing it."></textarea>
       </div>
       <div class="field">
         <label for="image">Exhibit A (optional image, memes go here)</label>
         <input id="image" name="image" type="file" accept="image/png,image/jpeg,image/gif,image/webp" />
-        <p class="small muted type">Up to 4 MB. It goes on the certificate if you make it.</p>
       </div>
       <div class="submit-row">
         <button class="btn" type="submit">Stamp it in</button>
-        <p class="small muted type">Five forms per ten minutes per citizen. No accounts. Your handle is your identity, like a real ministry.</p>
+        <p class="small muted type">Five forms per ten minutes. No accounts. Your handle is your identity, like a real ministry.</p>
       </div>
     </form>
+  </section>
 
-    <aside class="staff">
+  <section class="corridor-section">
+    <div class="section-head">
+      <p class="eyebrow">The corridor</p>
+      <h2>Seven doors. Your form knocks on all of them.</h2>
+    </div>
+    <Corridor departments={departments} currentStage="intake" visits={[]} />
+  </section>
+
+  <section class="staff-section">
+    <div class="section-head">
       <p class="eyebrow">Staff on duty</p>
-      <ul>
-        {clerks.map((d) => (
-          <li>
+      <h2>Three clerks, one human. Their portraits were painted from their own job descriptions.</h2>
+    </div>
+    <ul class="staff">
+      {clerks.map((d) => (
+        <li class="id-card" style={`--c: ${d.stampColor ?? '#5a4634'}`}>
+          <div class="id-photo">
             {d.clerk?.portraitUrl ? (
-              <img src={`${d.clerk.portraitUrl}?w=160&h=160&fit=crop&auto=format`} alt="" width="72" height="72" />
+              <img src={`${d.clerk.portraitUrl}?w=320&h=320&fit=crop&auto=format`} alt={`Portrait of ${d.clerk.name}`} width="160" height="160" loading="lazy" />
             ) : (
-              <span class="portrait-blank" aria-hidden="true">{d.clerk?.name?.split(' ').map((w) => w[0]).join('').slice(0, 2)}</span>
+              <span class="portrait-blank">{d.clerk?.name?.split(' ').map((w) => w[0]).join('').slice(0, 2)}</span>
             )}
-            <div>
-              <strong>{d.clerk?.name}</strong>
-              <span class="type small">{d.name}</span>
-              <span class="type small muted">"{d.clerk?.catchphrase}"</span>
-            </div>
-          </li>
-        ))}
-        <li>
-          <span class="portrait-blank minister" aria-hidden="true">?</span>
-          <div>
-            <strong>The Minister</strong>
-            <span class="type small">The Minister's Desk</span>
-            <span class="type small muted">A human. Allegedly. One hour to rule.</span>
+          </div>
+          <div class="id-text">
+            <span class="type id-dept">{d.name}</span>
+            <strong>{d.clerk?.name}</strong>
+            <span class="type quote">"{d.clerk?.catchphrase}"</span>
+            <span class="type muted">{d.motto}</span>
           </div>
         </li>
-      </ul>
-    </aside>
+      ))}
+      <li class="id-card minister" style="--c: #4a148c">
+        <div class="id-photo"><span class="portrait-blank">?</span></div>
+        <div class="id-text">
+          <span class="type id-dept">The Minister's Desk</span>
+          <strong>The Minister</strong>
+          <span class="type quote">"A human. Allegedly."</span>
+          <span class="type muted">One hour to rule, or the Archive gets it.</span>
+        </div>
+      </li>
+    </ul>
   </section>
+
+  {latest ? (
+    <section class="latest">
+      <div class="section-head">
+        <p class="eyebrow">Latest on the wall</p>
+        <h2>The most recent survivor.</h2>
+      </div>
+      <div class="latest-grid">
+        <Certificate certificate={latest} />
+        <div class="latest-text">
+          <p>Every certificate is a real document: the clerks' remarks become stamps, the Minister's note is on it, and it renders to an image the Ministry posts to Discord the moment it is issued.</p>
+          <p><a class="btn secondary" href="/wall">See the whole wall</a></p>
+        </div>
+      </div>
+    </section>
+  ) : null}
 </Layout>
 
 <style>
   .hero {
-    padding: 8px 0 26px;
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(360px, 0.95fr);
+    gap: 48px;
+    align-items: start;
+    padding: 10px 0 40px;
   }
   .hero-text {
-    max-width: 760px;
+    padding-top: 12px;
   }
   h1 em {
     font-style: italic;
     color: var(--stamp-red);
   }
   .lede {
-    font-size: 17px;
-    max-width: 62ch;
+    font-size: 20px;
+    line-height: 1.5;
+    max-width: 54ch;
   }
   .counts {
     display: flex;
-    gap: 18px;
+    gap: 22px;
     flex-wrap: wrap;
-    font-size: 13px;
+    font-size: 16px;
     color: var(--ink-2);
+    margin-top: 18px;
   }
   .counts span::before {
     content: '▪ ';
     color: var(--stamp-red);
-  }
-  .desk {
-    display: grid;
-    grid-template-columns: minmax(0, 1.5fr) minmax(260px, 1fr);
-    gap: 28px;
-    align-items: start;
-    margin-top: 30px;
   }
   .sheet-head {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
     gap: 12px;
-    margin-bottom: 14px;
+    margin-bottom: 18px;
   }
   .row {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 18px;
+    gap: 22px;
   }
   .submit-row {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 18px;
     flex-wrap: wrap;
-    margin-top: 6px;
   }
   .error {
     color: var(--stamp-red);
   }
-  .staff {
-    background: var(--manila);
-    padding: 18px 20px;
-    box-shadow: var(--shadow-paper);
+  .section-head {
+    margin: 48px 0 18px;
+    max-width: 860px;
   }
-  .staff ul {
+  .section-head h2 {
+    font-size: clamp(24px, 3vw, 36px);
+  }
+  .staff {
     list-style: none;
     margin: 0;
     padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+    gap: 22px;
   }
-  .staff li {
+  .id-card {
     display: flex;
-    gap: 12px;
-    align-items: center;
-    padding: 10px 0;
-    border-bottom: 1px dashed var(--brass-2);
+    gap: 16px;
+    padding: 18px;
+    min-width: 0;
+    background: var(--manila);
+    border-top: 10px solid var(--c);
+    box-shadow: var(--shadow-paper);
   }
-  .staff li:last-child {
-    border-bottom: 0;
-  }
-  .staff li div {
-    display: flex;
-    flex-direction: column;
-    line-height: 1.3;
-  }
-  .staff strong {
-    font-family: var(--serif);
-  }
-  .staff img,
+  .id-photo img,
   .portrait-blank {
-    width: 72px;
-    height: 72px;
+    width: 104px;
+    height: 104px;
     object-fit: cover;
-    border: 3px solid var(--paper);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    border: 4px solid var(--paper);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+    display: block;
     flex: none;
   }
   .portrait-blank {
     display: grid;
     place-items: center;
-    background: var(--plaster-2);
-    font-family: var(--serif);
-    font-weight: 900;
-    color: var(--ink-2);
-  }
-  .portrait-blank.minister {
     background: var(--desk);
     color: var(--brass);
+    font-family: var(--serif);
+    font-weight: 900;
+    font-size: 40px;
   }
-  @media (max-width: 820px) {
-    .desk,
-    .row {
+  .id-text {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    line-height: 1.3;
+    min-width: 0;
+  }
+  .id-dept {
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--c);
+  }
+  .id-text strong {
+    font-family: var(--serif);
+    font-size: 20px;
+    font-weight: 900;
+    line-height: 1.1;
+  }
+  .quote {
+    font-size: 15px;
+    color: var(--carbon);
+  }
+  .id-text .muted {
+    font-size: 14px;
+  }
+  .latest-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+    gap: 40px;
+    align-items: center;
+  }
+  .latest-text p {
+    font-size: 19px;
+  }
+  @media (max-width: 860px) {
+    .hero,
+    .row,
+    .latest-grid {
       grid-template-columns: 1fr;
     }
   }
