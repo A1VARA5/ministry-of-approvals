@@ -6,9 +6,10 @@ body { font-family: Inter, system-ui, sans-serif; background: #f4f1ea; }
 .office-tab.is-active { background: #3b3630; color: #fbf9f4; border-color: #3b3630; }
 .office-body { min-height: 0; }
 .office-board { flex: 1 1 auto; overflow: auto; min-width: 0; }
-.office-file { flex: 0 0 520px; max-width: 520px; overflow: auto; }
+.office-file { flex: 0 0 600px; max-width: 600px; overflow: auto; }
+.office-file.is-empty { flex: 0 0 220px; max-width: 220px; }
 .corridor { align-items: flex-start; min-width: max-content; }
-.corridor-column { width: 220px; flex: 0 0 220px; }
+.corridor-column { width: 200px; flex: 0 0 200px; }
 .corridor-column-head { position: sticky; top: 0; }
 .form-card { display: block; width: 100%; text-align: left; cursor: pointer; border: 0; padding: 0; background: none; font: inherit; border-radius: 4px; }
 .form-card.is-selected { outline: 2px solid #3b3630; }

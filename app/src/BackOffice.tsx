@@ -62,7 +62,7 @@ export function BackOffice() {
               </Suspense>
             </ErrorBoundary>
           </Box>
-          <Card borderLeft className="office-file" tone="transparent">
+          <Card borderLeft className={`office-file${selectedId ? '' : ' is-empty'}`} tone="transparent">
             {selectedId ? (
               <ErrorBoundary label="File view" key={selectedId}>
                 <Suspense fallback={<Box padding={4}><Text muted>Fetching the file</Text></Box>}>

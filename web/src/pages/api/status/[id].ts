@@ -1,5 +1,5 @@
 import type {APIRoute} from 'astro'
-import {engine, fieldMap, loadStatus, stageTitle} from '../../../lib/ministry'
+import {STALE_EFFECT_MS, engine, fallbackEngine, fieldMap, loadStatus, stageTitle} from '../../../lib/ministry'
 
 export const prerender = false
 
@@ -10,6 +10,18 @@ export const GET: APIRoute = async ({params}) => {
   const id = params.id ?? ''
   let {submission, instance, departments} = await loadStatus(id)
   if (!submission) return new Response('null', {status: 404, headers: {'content-type': 'application/json'}})
+  // Fallback drainer: a clerk effect nobody has claimed for 30 s gets run here.
+  const stale = (instance?.pendingEffects ?? []).some(
+    (e) => !e.claimed && e.queuedAt && Date.now() - Date.parse(e.queuedAt) > STALE_EFFECT_MS,
+  )
+  if (instance && stale) {
+    try {
+      await fallbackEngine.drainEffects({instanceId: instance._id})
+      instance = (await loadStatus(id)).instance
+    } catch {
+      // The Function or the next poll will get it.
+    }
+  }
   if (instance && !instance.completedAt && instance.currentStage === 'minister-review') {
     try {
       const result = await engine.tick({instanceId: instance._id})

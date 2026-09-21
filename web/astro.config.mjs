@@ -6,6 +6,8 @@ import vercel from '@astrojs/vercel'
 export default defineConfig({
   output: 'server',
   adapter: vercel({
+    // The fallback drainer can run one Agent Actions prompt inside a status poll.
+    maxDuration: 60,
     // The certificate renderer reads these from disk at request time.
     includeFiles: [
       'src/assets/fonts/fraunces-900.ttf',

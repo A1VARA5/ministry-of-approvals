@@ -9,7 +9,9 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "sync-effects": "node scripts/sync-effects.mjs",
+    "predev": "node scripts/sync-effects.mjs"
   },
   "dependencies": {
     "@astrojs/vercel": "^11.0.10",

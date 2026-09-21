@@ -1,5 +1,6 @@
 import {createClient} from '@sanity/client'
 import {createEngine, ENGINE_API_VERSION, refDataset} from '@sanity/workflow-engine'
+import {createEffectHandlers} from '../effects/index.ts'
 
 // Server side only. The project denies anonymous reads (found on day one of Bot Lawyer), so
 // even the public wall reads with a token. Nothing here is imported by client scripts.
@@ -37,6 +38,29 @@ export const engine = createEngine({
   executionContext: {kind: 'server', id: 'ministry-site'},
 })
 
+// A second engine with the clerk handlers registered. The Sanity Function is the runtime that
+// normally runs the clerks (it wakes within seconds of an effect being queued), but document
+// event delivery was once three minutes late, so the status poll drains anything left unclaimed
+// for over 30 seconds. Both runtimes claim under a lease, so they never run the same clerk twice.
+const contentVX = createClient({projectId: PROJECT_ID, dataset: DATASET, apiVersion: 'vX', token, useCdn: false})
+export const fallbackEngine = createEngine({
+  client: engineClient,
+  workflowResource: {type: 'dataset', id: `${PROJECT_ID}.${DATASET}`},
+  tag: TAG,
+  executionContext: {kind: 'drainer', id: 'ministry-site-fallback'},
+  effects: {
+    handlers: createEffectHandlers({
+      content: contentVX,
+      discordWebhookUrl: import.meta.env.DISCORD_WEBHOOK_URL as string | undefined,
+      siteUrl: import.meta.env.MINISTRY_SITE_URL as string | undefined,
+    }),
+    missingHandler: 'skip',
+    leaseMs: 120_000,
+  },
+})
+
+export const STALE_EFFECT_MS = 30_000
+
 export function subjectRef(documentId: string) {
   return refDataset({projectId: PROJECT_ID, dataset: DATASET, documentId, type: 'submission'})
 }
@@ -72,6 +96,7 @@ export type InstanceRow = {
   currentStage: string
   startedAt?: string
   completedAt?: string | null
+  pendingEffects?: Array<{name: string; queuedAt?: string; claimed: boolean}>
   fields: Array<{name: string; value: unknown}>
   stages: Array<{name: string; enteredAt: string; exitedAt?: string; fields?: Array<{name: string; value: unknown}>}>
   history: Array<{_type: string; at: string; stage?: string; action?: string; activity?: string; effect?: string; fromStage?: string}>
@@ -90,6 +115,7 @@ export const SUBMISSION_QUERY = `*[_type == "submission" && _id == $id][0]{
 export const INSTANCE_QUERY = `*[_type == "sanity.workflow.instance" && tag == $tag && definition == $definition
   && fields[name == "subject"][0].value.id == $gdr] | order(startedAt desc)[0]{
   _id, currentStage, startedAt, completedAt,
+  "pendingEffects": pendingEffects[]{name, queuedAt, "claimed": defined(claim)},
   "fields": fields[]{name, value},
   "stages": stages[]{name, enteredAt, exitedAt, "fields": fields[]{name, value}},
   "history": history[_type in ["stageEntered", "actionFired", "effectCompleted"]]{_type, at, stage, action, activity, effect, fromStage}

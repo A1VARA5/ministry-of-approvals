@@ -1,20 +1,17 @@
-import {useDocument, useQuery} from '@sanity/sdk-react'
+import {useCurrentUser, useDocument, useQuery} from '@sanity/sdk-react'
 import {Badge, Box, Button, Card, Dialog, Flex, Select, Stack, Text, TextArea, TextInput, useToast} from '@sanity/ui'
-import {AssigneePicker} from '@sanity/workflow-components'
 import {WorkflowDiagram} from '@sanity/workflow-diagram'
 import {
   actionRendering,
   errorMessage,
   type ActionEvaluation,
-  type Assignee,
   type Engine,
   type HistoryEntry,
   type WorkflowEvaluation,
   type WorkflowInstance,
 } from '@sanity/workflow-engine'
-import {useProjectMembers} from '@sanity/workflow-sdk'
 import {useCallback, useEffect, useState} from 'react'
-import {PROJECT_ID, ago, stageLabel} from './ministry'
+import {ago, stageLabel} from './ministry'
 
 type SubmissionDoc = {
   _id: string
@@ -417,6 +414,8 @@ function ParamsDialog({
 }
 
 // The workflow's `minister` assignee field, edited through the engine so it lands in history.
+// A plain button rather than the AssigneePicker from @sanity/workflow-components: wired to
+// engine.editField, the picker re-fired onChange while the commit was pending and hung the frame.
 function MinisterOnDuty({
   engine,
   instanceId,
@@ -426,34 +425,42 @@ function MinisterOnDuty({
   instanceId: string
   evaluation: WorkflowEvaluation
 }) {
-  const members = useProjectMembers(PROJECT_ID)
+  const user = useCurrentUser()
   const toast = useToast()
+  const [busy, setBusy] = useState(false)
   const field = evaluation.editableFields.find((entry) => entry.name === 'minister')
   if (!field) return null
-  const value = (Array.isArray(field.value) ? field.value : []) as readonly Assignee[]
+  const value = (Array.isArray(field.value) ? field.value : []) as ReadonlyArray<{type: string; id: string}>
+  const holder = value.find((v) => v.type === 'user')
+  const mine = Boolean(user && holder?.id === user.id)
+
+  const assign = async (next: Array<{type: 'user'; id: string}>) => {
+    setBusy(true)
+    try {
+      await engine.editField({instanceId, target: {scope: 'workflow', field: 'minister'}, mode: 'set', value: next})
+      toast.push({status: 'success', title: next.length ? 'File taken' : 'File released', closable: true})
+    } catch (error) {
+      toast.push({status: 'error', title: 'Could not assign', description: errorMessage(error), closable: true})
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <Card border radius={2} padding={3}>
       <Stack space={3}>
         <Text size={1} weight="semibold">
           Minister on duty for this file
         </Text>
-        <AssigneePicker
-          {...members}
-          value={value}
-          maxUsers={1}
-          onChange={async (next: readonly Assignee[]) => {
-            try {
-              await engine.editField({instanceId, target: {scope: 'workflow', field: 'minister'}, mode: 'set', value: next})
-            } catch (error) {
-              toast.push({status: 'error', title: 'Could not assign', description: errorMessage(error), closable: true})
-            }
-          }}
-        />
-        {!field.editable ? (
-          <Text size={0} muted>
-            Not editable at this stage.
-          </Text>
-        ) : null}
+        <Text size={1} muted>
+          {holder ? (mine ? 'You hold this file.' : `Held by ${holder.id}.`) : 'Nobody has taken this file yet.'}
+        </Text>
+        <Flex gap={2}>
+          {!mine && user ? (
+            <Button text="Take this file" mode="ghost" disabled={busy || !field.editable} onClick={() => void assign([{type: 'user', id: user.id}])} />
+          ) : null}
+          {mine ? <Button text="Release it" mode="ghost" disabled={busy || !field.editable} onClick={() => void assign([])} /> : null}
+        </Flex>
       </Stack>
     </Card>
   )

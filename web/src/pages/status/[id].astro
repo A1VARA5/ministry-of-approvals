@@ -45,7 +45,9 @@ const headline = done
       : 'Rejected by the Minister. You may resubmit.'
     : stage === 'minister-review'
       ? 'On the Minister’s desk. A human, allegedly.'
-      : `In the ${stageTitle(stage, departments)}.`
+      : stageTitle(stage, departments).startsWith('The ')
+        ? `In ${stageTitle(stage, departments)}.`
+        : `In the ${stageTitle(stage, departments)}.`
 const liveText = done
   ? `Closed ${ago(instance?.completedAt ?? '')}.`
   : waitingOnCitizen
