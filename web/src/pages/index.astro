@@ -1,0 +1,226 @@
+---
+import Layout from '../layouts/Layout.astro'
+import Corridor from '../components/Corridor.astro'
+import {content, loadDepartments} from '../lib/ministry'
+
+export const prerender = false
+
+const departments = await loadDepartments()
+const counts = await content.fetch<{certified: number; lost: number; open: number}>(
+  `{
+    "certified": count(*[_type == "certificate"]),
+    "lost": count(*[_type == "receipt"]),
+    "open": count(*[_type == "sanity.workflow.instance" && tag == "prod" && !defined(completedAt)])
+  }`,
+)
+const error = Astro.url.searchParams.get('error')
+const clerks = departments.filter((d) => d.clerk)
+---
+
+<Layout title="Front Desk" wide>
+  <section class="hero">
+    <div class="hero-text">
+      <p class="eyebrow">Form MoA-1 (rev. 7) · Take a number · The number is also a form</p>
+      <h1>Submit anything.<br />We will approve it.<br /><em>Eventually.</em></h1>
+      <p class="lede">
+        A meme, a name for your cat, a plan, a complaint about the plan. Every submission walks the same corridor: three
+        departments staffed by AI clerks with opinions, then a human Minister, then a certificate on the public wall. The
+        Archive loses every third form. The Minister has one hour to rule or the Archive gets it back. This is a feature.
+      </p>
+      <p class="counts type">
+        <span>{counts.open} in the corridor</span>
+        <span>{counts.certified} certified</span>
+        <span>{counts.lost} lost and receipted</span>
+      </p>
+    </div>
+  </section>
+
+  <Corridor departments={departments} currentStage="intake" visits={[]} />
+
+  <section class="desk">
+    <form class="sheet form-sheet" method="post" action="/api/submit" enctype="multipart/form-data">
+      <div class="sheet-head">
+        <div>
+          <p class="eyebrow">Form MoA-1 · Application for Approval</p>
+          <h2>File a submission</h2>
+        </div>
+        <span class="serial-box">No. ____</span>
+      </div>
+      {error ? <p class="error type">{error}</p> : null}
+      <div class="field">
+        <label for="title">What are you asking the Ministry to approve?</label>
+        <input id="title" name="title" type="text" required maxlength="120" placeholder="Rename the office cat to Deputy Minister" />
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="kind">Kind of thing</label>
+          <select id="kind" name="kind">
+            <option value="meme">Meme</option>
+            <option value="name">Name for something</option>
+            <option value="plan">Plan</option>
+            <option value="idea">Idea</option>
+            <option value="complaint">Complaint</option>
+            <option value="other" selected>Other</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="citizen">Your handle</label>
+          <input id="citizen" name="citizen" type="text" required maxlength="40" placeholder="citizen_0042" />
+        </div>
+      </div>
+      <div class="field">
+        <label for="body">The submission</label>
+        <textarea id="body" name="body" required maxlength="2000" placeholder="Describe it. The Department of Pedantry will want a date, a reason and a signature. It will not tell you which one until you are missing it."></textarea>
+      </div>
+      <div class="field">
+        <label for="image">Exhibit A (optional image, memes go here)</label>
+        <input id="image" name="image" type="file" accept="image/png,image/jpeg,image/gif,image/webp" />
+        <p class="small muted type">Up to 4 MB. It goes on the certificate if you make it.</p>
+      </div>
+      <div class="submit-row">
+        <button class="btn" type="submit">Stamp it in</button>
+        <p class="small muted type">Five forms per ten minutes per citizen. No accounts. Your handle is your identity, like a real ministry.</p>
+      </div>
+    </form>
+
+    <aside class="staff">
+      <p class="eyebrow">Staff on duty</p>
+      <ul>
+        {clerks.map((d) => (
+          <li>
+            {d.clerk?.portraitUrl ? (
+              <img src={`${d.clerk.portraitUrl}?w=160&h=160&fit=crop&auto=format`} alt="" width="72" height="72" />
+            ) : (
+              <span class="portrait-blank" aria-hidden="true">{d.clerk?.name?.split(' ').map((w) => w[0]).join('').slice(0, 2)}</span>
+            )}
+            <div>
+              <strong>{d.clerk?.name}</strong>
+              <span class="type small">{d.name}</span>
+              <span class="type small muted">"{d.clerk?.catchphrase}"</span>
+            </div>
+          </li>
+        ))}
+        <li>
+          <span class="portrait-blank minister" aria-hidden="true">?</span>
+          <div>
+            <strong>The Minister</strong>
+            <span class="type small">The Minister's Desk</span>
+            <span class="type small muted">A human. Allegedly. One hour to rule.</span>
+          </div>
+        </li>
+      </ul>
+    </aside>
+  </section>
+</Layout>
+
+<style>
+  .hero {
+    padding: 8px 0 26px;
+  }
+  .hero-text {
+    max-width: 760px;
+  }
+  h1 em {
+    font-style: italic;
+    color: var(--stamp-red);
+  }
+  .lede {
+    font-size: 17px;
+    max-width: 62ch;
+  }
+  .counts {
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+    font-size: 13px;
+    color: var(--ink-2);
+  }
+  .counts span::before {
+    content: '▪ ';
+    color: var(--stamp-red);
+  }
+  .desk {
+    display: grid;
+    grid-template-columns: minmax(0, 1.5fr) minmax(260px, 1fr);
+    gap: 28px;
+    align-items: start;
+    margin-top: 30px;
+  }
+  .sheet-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+  }
+  .submit-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-top: 6px;
+  }
+  .error {
+    color: var(--stamp-red);
+  }
+  .staff {
+    background: var(--manila);
+    padding: 18px 20px;
+    box-shadow: var(--shadow-paper);
+  }
+  .staff ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .staff li {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px dashed var(--brass-2);
+  }
+  .staff li:last-child {
+    border-bottom: 0;
+  }
+  .staff li div {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.3;
+  }
+  .staff strong {
+    font-family: var(--serif);
+  }
+  .staff img,
+  .portrait-blank {
+    width: 72px;
+    height: 72px;
+    object-fit: cover;
+    border: 3px solid var(--paper);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    flex: none;
+  }
+  .portrait-blank {
+    display: grid;
+    place-items: center;
+    background: var(--plaster-2);
+    font-family: var(--serif);
+    font-weight: 900;
+    color: var(--ink-2);
+  }
+  .portrait-blank.minister {
+    background: var(--desk);
+    color: var(--brass);
+  }
+  @media (max-width: 820px) {
+    .desk,
+    .row {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

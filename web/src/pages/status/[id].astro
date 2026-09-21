@@ -1,0 +1,282 @@
+---
+import Layout from '../../layouts/Layout.astro'
+import Corridor from '../../components/Corridor.astro'
+import Certificate, {type CertificateData} from '../../components/Certificate.astro'
+import {CERTIFICATE_PROJECTION, ago, content, fieldMap, kindLabel, loadStatus, stageTitle} from '../../lib/ministry'
+
+export const prerender = false
+
+const id = Astro.params.id ?? ''
+const {submission, instance, departments} = await loadStatus(id)
+if (!submission) return Astro.redirect('/?error=' + encodeURIComponent('No such form. The Archive may have it.'))
+
+const fields = fieldMap(instance)
+const stage = instance?.currentStage ?? 'intake'
+const done = Boolean(instance?.completedAt)
+const lostCount = typeof fields.lostCount === 'number' ? fields.lostCount : 0
+const delays = typeof fields.delays === 'number' ? fields.delays : 0
+const demand = typeof fields.demand === 'string' ? fields.demand : null
+const rejection = typeof fields.rejectionReason === 'string' ? fields.rejectionReason : null
+const waitingOnCitizen = stage === 'intake' && Boolean(demand || rejection)
+const visits = instance?.stages ?? []
+const deadline = (() => {
+  const last = visits[visits.length - 1] as {fields?: Array<{name: string; value: unknown}>} | undefined
+  const v = last?.fields?.find((f) => f.name === 'deadline')?.value
+  return typeof v === 'string' ? v : null
+})()
+const colour = (key: string) => departments.find((d) => d.stage === key)?.stampColor
+const remarks = [
+  {who: stageTitle('department-a', departments), colour: colour('department-a'), text: fields.remarkPedantry, verdict: fields.pedanticApproved ? 'approved' : demand ? 'returned' : 'inspected'},
+  {who: stageTitle('department-b', departments), colour: colour('department-b'), text: fields.remarkRubber, verdict: 'approved'},
+  {who: stageTitle('department-c', departments), colour: colour('department-c'), text: fields.remarkArchive, verdict: lostCount > 0 && stage === 'intake' ? 'lost' : 'filed'},
+  {who: 'The Minister', colour: '#2f6b3a', text: fields.ministerNote, verdict: 'approved'},
+].filter((r) => typeof r.text === 'string' && r.text)
+const certificate =
+  done && stage === 'on-the-wall'
+    ? await content.fetch<CertificateData | null>(`*[_type == "certificate" && submission._ref == $id][0]${CERTIFICATE_PROJECTION}`, {id})
+    : null
+const headline = done
+  ? stage === 'on-the-wall'
+    ? 'Approved. It is on the wall.'
+    : 'Withdrawn and shredded.'
+  : waitingOnCitizen
+    ? demand
+      ? 'Returned to you by the Department of Pedantry.'
+      : 'Rejected by the Minister. You may resubmit.'
+    : stage === 'minister-review'
+      ? 'On the Minister’s desk. A human, allegedly.'
+      : `In the ${stageTitle(stage, departments)}.`
+const liveText = done
+  ? `Closed ${ago(instance?.completedAt ?? '')}.`
+  : waitingOnCitizen
+    ? 'The Ministry is waiting for you. Nobody else is.'
+    : stage === 'minister-review' && deadline
+      ? `The Minister must rule by ${new Date(deadline).toUTCString().replace(' GMT', ' UTC')} or the Archive gets it. This page refreshes by itself.`
+      : 'A clerk is on it. This page refreshes by itself.'
+---
+
+<Layout title={`Form No. ${String(submission.serial ?? 0).padStart(4, '0')}`} wide>
+  <section class="status-head">
+    <div>
+      <p class="eyebrow">Form MoA-1 · Status of application · <span data-stage-title>{stageTitle(stage, departments)}</span></p>
+      <h1>{headline}</h1>
+      <p class="type small muted" data-live={!done && !waitingOnCitizen ? '' : undefined}>{liveText}</p>
+    </div>
+    <div class="stamps-head">
+      {lostCount > 0 ? <span class="stamp big slam" style="color: var(--stamp-red); --tilt: -6deg">Lost {lostCount}x</span> : null}
+      {delays > 0 ? <span class="stamp big slam" style="color: var(--stamp-blue); --tilt: 4deg">Delayed {delays}x</span> : null}
+      {done && stage === 'on-the-wall' ? <span class="stamp big slam" style="color: var(--stamp-green); --tilt: -4deg">Approved</span> : null}
+      {done && stage === 'shredded' ? <span class="stamp big slam" style="color: var(--stamp-red); --tilt: 3deg">Shredded</span> : null}
+      {waitingOnCitizen ? <span class="stamp big slam" style="color: var(--stamp-red); --tilt: -5deg">{demand ? 'Returned' : 'Rejected'}</span> : null}
+    </div>
+  </section>
+
+  <Corridor departments={departments} currentStage={stage} visits={visits} done={done} />
+
+  <section class="body">
+    <article class="sheet form-sheet">
+      <div class="sheet-head">
+        <div>
+          <p class="eyebrow">{kindLabel(submission.kind)} · filed by {submission.citizen} · {submission.submittedAt ? ago(submission.submittedAt) : ''}</p>
+          <h2>{submission.title}</h2>
+        </div>
+        <span class="serial-box">No. {String(submission.serial ?? 0).padStart(4, '0')}</span>
+      </div>
+      <p class="typed">{submission.body}</p>
+      {submission.imageUrl ? (
+        <figure class="exhibit">
+          <img src={`${submission.imageUrl}?w=900&auto=format`} alt="Exhibit A" loading="lazy" />
+          <figcaption class="type small muted">Exhibit A</figcaption>
+        </figure>
+      ) : null}
+      {submission.amendments?.length ? (
+        <div class="amendments">
+          <p class="eyebrow">Amendments</p>
+          {submission.amendments.map((a) => (
+            <div class="amendment">
+              {a.inReplyTo ? <p class="small muted type">In reply to: {a.inReplyTo}</p> : null}
+              <p class="typed">{a.text}</p>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {remarks.length ? (
+        <div class="remarks">
+          <p class="eyebrow">Remarks on file</p>
+          {remarks.map((r, i) => (
+            <div class="remark" style={`--tilt: ${[-3, 2, -2, 3][i % 4]}deg`}>
+              <span class="stamp" style={`color: ${r.colour ?? 'var(--stamp-red)'}`}>{r.who} · {r.verdict}</span>
+              <p class="type">{r.text}</p>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </article>
+
+    <aside class="side">
+      {waitingOnCitizen ? (
+        <section class="returned sheet">
+          <p class="eyebrow">{demand ? 'Notice of deficiency' : 'Notice of rejection'}</p>
+          <blockquote class="typed">{demand ?? rejection}</blockquote>
+          <form method="post" action="/api/act">
+            <input type="hidden" name="id" value={id} />
+            <input type="hidden" name="action" value="resubmit" />
+            <div class="field">
+              <label for="amendment">Your amendment</label>
+              <textarea id="amendment" name="amendment" required maxlength="1000" placeholder="Give them exactly what they asked for. Nothing more. Nothing less is also fine, they will ask again."></textarea>
+            </div>
+            <button class="btn" type="submit">Resubmit</button>
+          </form>
+          <form method="post" action="/api/act" class="withdraw">
+            <input type="hidden" name="id" value={id} />
+            <input type="hidden" name="action" value="withdraw" />
+            <button class="btn danger" type="submit">Withdraw and shred</button>
+          </form>
+        </section>
+      ) : null}
+
+      {visits.length ? (
+        <section class="movements">
+          <p class="eyebrow">Movements</p>
+          <ol class="type">
+            {visits.slice().reverse().map((v) => (
+              <li>
+                <span class="muted">{ago(v.enteredAt)}</span>
+                <span>{stageTitle(v.name, departments)}</span>
+                {v.exitedAt ? <span class="muted">left {ago(v.exitedAt)}</span> : <span class="here">here now</span>}
+              </li>
+            ))}
+          </ol>
+        </section>
+      ) : null}
+    </aside>
+  </section>
+
+  {certificate ? (
+    <section class="cert-section">
+      <p class="eyebrow">Your certificate</p>
+      <Certificate certificate={certificate} />
+      <p class="small muted type">Also on the <a href={`/wall#${encodeURIComponent(certificate.number)}`}>wall</a>.</p>
+    </section>
+  ) : null}
+</Layout>
+
+<script>
+  // Poll while a clerk (or the Minister's clock) is working; reload when the stage changes so the
+  // server renders the new state and the stamps slam in. Stops when the file waits on the citizen
+  // or is closed.
+  const live = document.querySelector('[data-live]')
+  if (live) {
+    const id = decodeURIComponent(location.pathname.split('/').pop() ?? '')
+    const startStage = document.querySelector('[data-stage-title]')?.textContent
+    const tick = async () => {
+      try {
+        const res = await fetch(`/api/status/${encodeURIComponent(id)}`, {cache: 'no-store'})
+        if (!res.ok) return
+        const data = await res.json()
+        if (data.stageTitle !== startStage || data.completedAt) location.reload()
+      } catch {}
+    }
+    setInterval(tick, 4000)
+  }
+</script>
+
+<style>
+  .status-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+  }
+  .status-head h1 {
+    font-size: clamp(26px, 4vw, 40px);
+    max-width: 22ch;
+  }
+  .stamps-head {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    padding-top: 12px;
+  }
+  .body {
+    display: grid;
+    grid-template-columns: minmax(0, 1.6fr) minmax(280px, 1fr);
+    gap: 28px;
+    align-items: start;
+    margin-top: 28px;
+  }
+  .sheet-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .exhibit {
+    margin: 14px 0;
+  }
+  .exhibit img {
+    max-width: 100%;
+    max-height: 420px;
+    border: 6px solid #fff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    transform: rotate(1deg);
+  }
+  .amendments {
+    margin-top: 16px;
+  }
+  .amendment {
+    margin-bottom: 10px;
+  }
+  .remarks {
+    margin-top: 22px;
+    display: grid;
+    gap: 14px;
+  }
+  .remark p {
+    margin: 8px 0 0;
+    font-size: 14px;
+    line-height: 1.4;
+  }
+  .returned {
+    border-top: 6px solid var(--stamp-red);
+    margin-bottom: 20px;
+  }
+  .returned blockquote {
+    margin: 0 0 14px;
+  }
+  .withdraw {
+    margin-top: 10px;
+  }
+  .movements ol {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    font-size: 13px;
+  }
+  .movements li {
+    display: grid;
+    grid-template-columns: 90px 1fr auto;
+    gap: 10px;
+    padding: 6px 0;
+    border-bottom: 1px dashed var(--rule);
+  }
+  .here {
+    color: var(--stamp-red);
+  }
+  .cert-section {
+    margin-top: 36px;
+    max-width: 720px;
+  }
+  @media (max-width: 820px) {
+    .body {
+      grid-template-columns: 1fr;
+    }
+    .movements li {
+      grid-template-columns: 80px 1fr;
+    }
+  }
+</style>

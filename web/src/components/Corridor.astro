@@ -1,0 +1,226 @@
+---
+// The corridor: one door per stage, a paper sprite in front of the current door. Doors are
+// SVG drawn here so the department colour, motto and clerk come straight from the department
+// documents. Visited doors get a small stamp on the glass; the current door glows.
+import type {Department} from '../lib/ministry'
+import {STAGE_ORDER, stageTitle} from '../lib/ministry'
+
+interface Props {
+  departments: Department[]
+  currentStage: string
+  visits: Array<{name: string}>
+  done?: boolean
+  compact?: boolean
+}
+const {departments, currentStage, visits, done = false, compact = false} = Astro.props
+const doors = STAGE_ORDER.map((key) => {
+  const dept = departments.find((d) => d.stage === key)
+  return {
+    key,
+    title: stageTitle(key, departments),
+    motto: dept?.motto ?? (key === 'on-the-wall' ? 'Suitable for framing.' : ''),
+    colour: dept?.stampColor ?? (key === 'on-the-wall' ? '#c9a227' : '#5a4634'),
+    clerk: dept?.clerk?.name ?? (key === 'minister-review' ? 'The Minister' : ''),
+    portrait: dept?.clerk?.portraitUrl ? `${dept.clerk.portraitUrl}?w=160&h=150&fit=crop&auto=format` : undefined,
+    visited: visits.some((v) => v.name === key),
+    times: visits.filter((v) => v.name === key).length,
+    current: key === currentStage,
+  }
+})
+const currentIndex = Math.max(0, doors.findIndex((d) => d.current))
+---
+
+<div class:list={['corridor', {compact, done}]} data-corridor data-current={currentIndex}>
+  <div class="dado" aria-hidden="true"></div>
+  <ol class="doors">
+    {doors.map((d) => (
+      <li class:list={['door', {visited: d.visited, current: d.current}]} style={`--c: ${d.colour}`}>
+        <svg viewBox="0 0 120 190" role="img" aria-label={d.title}>
+          <rect x="4" y="4" width="112" height="186" rx="3" fill="#6b5340" stroke="#3d2f22" stroke-width="2" />
+          <rect x="12" y="12" width="96" height="172" rx="2" fill="var(--c)" opacity="0.92" />
+          <rect x="20" y="20" width="80" height="74" rx="2" class="glass" />
+          {d.portrait ? (
+            <>
+              <clipPath id={`glass-${d.key}`}><rect x="22" y="22" width="76" height="70" rx="2" /></clipPath>
+              <image href={d.portrait} x="22" y="22" width="76" height="70" preserveAspectRatio="xMidYMid slice" clip-path={`url(#glass-${d.key})`} class="glass-portrait" />
+            </>
+          ) : (
+            <>
+              <text x="60" y="52" text-anchor="middle" class="glass-text">
+                {d.title.split(' ').slice(0, 2).join(' ')}
+              </text>
+              <text x="60" y="68" text-anchor="middle" class="glass-text">
+                {d.title.split(' ').slice(2).join(' ')}
+              </text>
+            </>
+          )}
+          <rect x="22" y="106" width="76" height="24" rx="2" fill="#c9a227" stroke="#8a6d14" />
+          <text x="60" y="122" text-anchor="middle" class="plate" textLength={(d.clerk || 'Vacant').length > 12 ? 70 : undefined} lengthAdjust="spacingAndGlyphs">
+            {d.clerk || 'Vacant'}
+          </text>
+          <circle cx="92" cy="150" r="4" fill="#c9a227" stroke="#8a6d14" />
+          {d.visited && !d.current ? (
+            <g transform="rotate(-14 60 78)" class="visit-stamp">
+              <rect x="34" y="70" width="52" height="16" rx="2" fill="none" stroke="#b3261e" stroke-width="2" />
+              <text x="60" y="82" text-anchor="middle" font-size="9" font-weight="900" fill="#b3261e" font-family="Fraunces, serif">
+                {d.times > 1 ? `SEEN x${d.times}` : 'SEEN'}
+              </text>
+            </g>
+          ) : null}
+        </svg>
+        <span class="door-label">{d.title}</span>
+        {!compact ? <span class="door-motto">{d.motto}</span> : null}
+      </li>
+    ))}
+  </ol>
+  {!done ? (
+    <div class="paper" style={`--i: ${currentIndex}`} aria-hidden="true">
+      <svg viewBox="0 0 40 52">
+        <path d="M2 2h26l10 10v38H2z" fill="#fbf7ec" stroke="#1b1916" stroke-width="1.5" />
+        <path d="M28 2v10h10" fill="#e6d3a3" stroke="#1b1916" stroke-width="1.5" />
+        <path d="M8 20h22M8 27h22M8 34h16" stroke="#3a4a7c" stroke-width="1.5" />
+      </svg>
+    </div>
+  ) : null}
+</div>
+
+<style>
+  .corridor {
+    position: relative;
+    padding: 18px 12px 14px;
+    background: linear-gradient(180deg, var(--plaster-2), var(--plaster) 70%);
+    border-top: 1px solid var(--rule);
+    border-bottom: 3px solid var(--desk);
+    overflow-x: auto;
+  }
+  /* The green lower wall. Door labels sit on it, so it is as tall as the label block. */
+  .dado {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 78px;
+    background: var(--dado);
+    border-top: 3px solid #35493a;
+  }
+  .doors {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(7, minmax(120px, 1fr));
+    gap: 10px;
+    position: relative;
+  }
+  .door {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    opacity: 0.72;
+    transition: opacity 300ms;
+  }
+  .door.visited,
+  .door.current {
+    opacity: 1;
+  }
+  .door svg {
+    width: 112px;
+    height: auto;
+    filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.25));
+  }
+  .door .glass {
+    fill: #dfe7ea;
+    stroke: #3d2f22;
+    stroke-width: 1.5;
+    transition: fill 400ms;
+  }
+  .door.current .glass {
+    fill: #fff1b8;
+    filter: drop-shadow(0 0 6px #ffd966);
+  }
+  .glass-portrait {
+    opacity: 0.85;
+  }
+  .door.current .glass-portrait {
+    opacity: 1;
+  }
+  .glass-text {
+    font-family: 'Special Elite', monospace;
+    font-size: 9px;
+    fill: #1b1916;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .plate {
+    font-family: 'Special Elite', monospace;
+    font-size: 8px;
+    fill: #1b1916;
+  }
+  .door-label {
+    font-family: var(--serif);
+    font-weight: 700;
+    font-size: 13px;
+    line-height: 1.15;
+    margin-top: 14px;
+    color: var(--paper);
+    position: relative;
+    z-index: 1;
+    min-height: 30px;
+  }
+  .door-motto {
+    font-family: var(--type);
+    font-size: 10px;
+    line-height: 1.25;
+    color: var(--paper);
+    opacity: 0.8;
+    position: relative;
+    z-index: 1;
+    max-width: 130px;
+    min-height: 26px;
+  }
+  .compact .dado {
+    height: 40px;
+  }
+  .paper {
+    position: absolute;
+    top: 118px;
+    left: calc(12px + (100% - 24px - 60px) / 7 * var(--i) + (100% - 24px) / 14 - 16px);
+    width: 40px;
+    transition: left 700ms cubic-bezier(0.4, 0, 0.2, 1);
+    filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.35));
+    z-index: 2;
+  }
+  .compact {
+    padding: 10px 8px 20px;
+  }
+  .compact .doors {
+    grid-template-columns: repeat(7, minmax(80px, 1fr));
+    gap: 6px;
+  }
+  .compact .door svg {
+    width: 76px;
+  }
+  .compact .door-label {
+    font-size: 11px;
+    margin-top: 10px;
+    min-height: 0;
+  }
+  .compact .paper {
+    top: 80px;
+    width: 28px;
+  }
+  @media (max-width: 760px) {
+    .doors {
+      grid-template-columns: repeat(7, 118px);
+    }
+    .paper {
+      left: calc(12px + 128px * var(--i) + 40px);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .paper {
+      transition: none;
+    }
+  }
+</style>

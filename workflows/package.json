@@ -1,0 +1,29 @@
+{
+  "name": "ministry-workflows",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Workflow definition, effect handlers and runtime for The Ministry of Approvals",
+  "scripts": {
+    "check": "sanity-workflows deploy --check",
+    "deploy": "sanity-workflows deploy",
+    "drain": "tsx src/drain-local.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@sanity/client": "^8.6.2",
+    "@sanity/functions": "^1.8.0",
+    "@sanity/workflow-engine": "0.33.0"
+  },
+  "devDependencies": {
+    "@sanity/blueprints": "^0.26.1",
+    "@sanity/workflow-blueprint": "0.33.0",
+    "@sanity/workflow-cli": "0.33.0",
+    "@sanity/workflow-engine-test": "^0.33.0",
+    "@types/node": "^22",
+    "tsx": "^4",
+    "typescript": "^6",
+    "vitest": "^3.2.7"
+  }
+}

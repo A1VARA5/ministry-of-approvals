@@ -1,0 +1,125 @@
+---
+import Layout from '../layouts/Layout.astro'
+import {ago, content} from '../lib/ministry'
+
+export const prerender = false
+
+type Receipt = {
+  _id: string
+  number: string
+  issuedAt: string
+  excuse?: string
+  lostCount?: number
+  submission?: {_id: string; title: string; citizen: string}
+}
+const receipts = await content.fetch<Receipt[]>(`*[_type == "receipt"] | order(issuedAt desc)[0...60]{
+  _id, number, issuedAt, excuse, lostCount, submission->{_id, title, citizen}
+}`)
+---
+
+<Layout title="Hall of Lost Forms" wide>
+  <div class="head">
+    <p class="eyebrow">The Archive · Three floors underground</p>
+    <h1>The Hall of Lost Forms</h1>
+    <p class="muted">
+      The Archive loses every third form once, and every form the Minister sits on too long. Each loss comes with a
+      receipt: the Archivist's own account of where it went. The form goes back to the Front Desk and walks the
+      corridor again. The receipt stays here forever.
+    </p>
+  </div>
+
+  <div class="cabinet">
+    {receipts.length === 0 ? <div class="drawer empty"><span class="type">Nothing lost yet. Give it time.</span></div> : null}
+    {receipts.map((r) => (
+      <div class="drawer">
+        <div class="handle" aria-hidden="true"></div>
+        <div class="label-holder"><span class="type">{r.number}</span></div>
+        <article class="receipt">
+          <p class="type small muted">RECEIPT FOR A LOST FORM · {ago(r.issuedAt)}{r.lostCount && r.lostCount > 1 ? ` · loss no. ${r.lostCount}` : ''}</p>
+          <h2>{r.submission?.title ?? 'A form'}</h2>
+          <p class="type small muted">filed by {r.submission?.citizen ?? 'a citizen'}</p>
+          <blockquote class="type">{r.excuse}</blockquote>
+          {r.submission ? <a class="type small" href={`/status/${encodeURIComponent(r.submission._id)}`}>Where is it now?</a> : null}
+          <div class="tear" aria-hidden="true"></div>
+        </article>
+      </div>
+    ))}
+  </div>
+</Layout>
+
+<style>
+  .head {
+    max-width: 760px;
+    margin-bottom: 22px;
+  }
+  .cabinet {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 4px;
+    padding: 12px;
+    background: #6f7378;
+    border: 6px solid #4c5054;
+    border-radius: 4px;
+    box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.4), 0 10px 20px rgba(0, 0, 0, 0.35);
+  }
+  .drawer {
+    position: relative;
+    background: linear-gradient(180deg, #8b9096, #6f7378);
+    border: 2px solid #4c5054;
+    border-radius: 2px;
+    padding: 46px 18px 18px;
+    min-height: 120px;
+  }
+  .drawer.empty {
+    display: grid;
+    place-items: center;
+    color: #fff;
+  }
+  .handle {
+    position: absolute;
+    top: 14px;
+    left: 50%;
+    width: 60px;
+    height: 12px;
+    margin-left: -30px;
+    border-radius: 6px;
+    background: linear-gradient(#e6e6e6, #9a9a9a);
+    box-shadow: 0 2px 2px rgba(0, 0, 0, 0.5);
+  }
+  .label-holder {
+    position: absolute;
+    top: 10px;
+    left: 18px;
+    padding: 2px 8px;
+    background: #f2eddc;
+    border: 1.5px solid #3b3d40;
+    font-size: 11px;
+  }
+  .receipt {
+    position: relative;
+    background: #fff;
+    padding: 14px 16px 22px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35);
+    transform: rotate(-0.8deg);
+  }
+  .receipt h2 {
+    font-size: 17px;
+    margin: 6px 0 2px;
+  }
+  .receipt blockquote {
+    margin: 10px 0;
+    padding: 8px 12px;
+    background: var(--paper-2);
+    font-size: 13px;
+    line-height: 1.45;
+  }
+  .tear {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -8px;
+    height: 8px;
+    background: linear-gradient(135deg, #fff 50%, transparent 50%), linear-gradient(225deg, #fff 50%, transparent 50%);
+    background-size: 12px 8px;
+  }
+</style>

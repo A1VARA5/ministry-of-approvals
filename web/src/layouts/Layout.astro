@@ -1,0 +1,428 @@
+---
+interface Props {
+  title: string
+  description?: string
+  ogImage?: string
+  wide?: boolean
+}
+const {
+  title,
+  description = 'Submit anything. Three departments, one Minister, one certificate. Forms may be lost.',
+  ogImage,
+  wide = false,
+} = Astro.props
+const path = Astro.url.pathname
+const nav = [
+  {href: '/', label: 'Front Desk'},
+  {href: '/wall', label: 'Wall of Certificates'},
+  {href: '/lost', label: 'Hall of Lost Forms'},
+  {href: '/about', label: 'How it works'},
+]
+const og = ogImage ?? new URL('/og.png', Astro.url).toString()
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title} | The Ministry of Approvals</title>
+    <meta name="description" content={description} />
+    <meta property="og:title" content={`${title} | The Ministry of Approvals`} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={og} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700;9..144,900&family=IBM+Plex+Sans:wght@400;500;600&family=Special+Elite&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <header class="masthead">
+      <a class="crest" href="/">
+        <svg class="crest-seal" viewBox="0 0 64 64" aria-hidden="true">
+          <circle cx="32" cy="32" r="29" fill="none" stroke="currentColor" stroke-width="3" />
+          <circle cx="32" cy="32" r="23" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="2 3" />
+          <text x="32" y="38" text-anchor="middle" font-family="Fraunces, Georgia, serif" font-weight="900" font-size="17" fill="currentColor">MoA</text>
+        </svg>
+        <span class="crest-text">
+          <strong>The Ministry of Approvals</strong>
+          <small>Est. this week. Open 24 hours. Closed for lunch.</small>
+        </span>
+      </a>
+      <nav>
+        {nav.map((item) => (
+          <a href={item.href} class:list={[{active: path === item.href || (item.href !== '/' && path.startsWith(item.href))}]}>
+            {item.label}
+          </a>
+        ))}
+      </nav>
+    </header>
+    <main class:list={[{wide}]}>
+      <slot />
+    </main>
+    <footer>
+      <p>
+        A vibe coded entry for the Sanity Challenge. The departments, the clerks, the forms and the workflow itself
+        live in Sanity project <code>v6745vem</code>. The clerks are Agent Actions. The Minister is a person, allegedly.
+      </p>
+    </footer>
+  </body>
+</html>
+
+<style is:global>
+  :root {
+    --plaster: #d8d2c2;
+    --plaster-2: #cbc4b2;
+    --dado: #4f6b52;
+    --desk: #5a4634;
+    --paper: #fbf7ec;
+    --paper-2: #f1eadb;
+    --manila: #e6d3a3;
+    --carbon: #3a4a7c;
+    --ink: #1b1916;
+    --ink-2: #5c554b;
+    --rule: #b9b1a0;
+    --stamp-red: #b3261e;
+    --stamp-green: #2f6b3a;
+    --stamp-blue: #2b4c8c;
+    --brass: #c9a227;
+    --brass-2: #8a6d14;
+    --serif: 'Fraunces', Georgia, serif;
+    --sans: 'IBM Plex Sans', system-ui, sans-serif;
+    --type: 'Special Elite', 'Courier New', monospace;
+    --shadow-paper: 0 1px 2px rgba(27, 25, 22, 0.18), 0 8px 24px rgba(27, 25, 22, 0.12);
+  }
+  * {
+    box-sizing: border-box;
+  }
+  html {
+    background: var(--plaster) url('/grain.png');
+    background-size: 256px 256px;
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.5;
+  }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+  .masthead,
+  main,
+  footer {
+    position: relative;
+    z-index: 1;
+  }
+  main {
+    flex: 1;
+    width: 100%;
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 28px 16px 72px;
+  }
+  main.wide {
+    max-width: 1320px;
+  }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--serif);
+    font-weight: 700;
+    line-height: 1.1;
+    margin: 0 0 12px;
+    letter-spacing: -0.01em;
+  }
+  h1 {
+    font-size: clamp(30px, 5vw, 52px);
+    font-weight: 900;
+  }
+  h2 {
+    font-size: 24px;
+  }
+  p {
+    margin: 0 0 12px;
+  }
+  a {
+    color: var(--carbon);
+  }
+  code {
+    font-family: var(--type);
+    font-size: 0.95em;
+  }
+  .type {
+    font-family: var(--type);
+    letter-spacing: 0.01em;
+  }
+  .muted {
+    color: var(--ink-2);
+  }
+  .small {
+    font-size: 13px;
+  }
+
+  /* masthead */
+  .masthead {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding: 12px 20px;
+    background: var(--desk);
+    color: var(--paper);
+    border-bottom: 4px solid var(--brass);
+  }
+  .crest {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+    color: var(--paper);
+  }
+  .crest-seal {
+    width: 46px;
+    height: 46px;
+    color: var(--brass);
+    transform: rotate(-8deg);
+  }
+  .crest-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.15;
+  }
+  .crest-text strong {
+    font-family: var(--serif);
+    font-size: 19px;
+    font-weight: 900;
+  }
+  .crest-text small {
+    font-family: var(--type);
+    font-size: 11px;
+    opacity: 0.8;
+  }
+  nav {
+    display: flex;
+    gap: 2px;
+    flex-wrap: wrap;
+  }
+  nav a {
+    padding: 8px 12px;
+    text-decoration: none;
+    color: var(--paper);
+    font-family: var(--type);
+    font-size: 14px;
+    border-bottom: 2px solid transparent;
+  }
+  nav a.active,
+  nav a:hover {
+    border-bottom-color: var(--brass);
+  }
+  footer {
+    padding: 22px 16px;
+    background: var(--desk);
+    color: var(--paper);
+    font-family: var(--type);
+    font-size: 12px;
+    text-align: center;
+    border-top: 4px solid var(--brass);
+  }
+  footer p {
+    max-width: 760px;
+    margin: 0 auto;
+    opacity: 0.85;
+  }
+  footer code {
+    color: var(--brass);
+  }
+
+  /* paper objects */
+  .sheet {
+    position: relative;
+    background: var(--paper);
+    box-shadow: var(--shadow-paper);
+    padding: 26px 28px 26px 44px;
+  }
+  .sheet::before,
+  .sheet::after {
+    content: '';
+    position: absolute;
+    left: 16px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--plaster);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.35);
+  }
+  .sheet::before {
+    top: 22%;
+  }
+  .sheet::after {
+    top: 72%;
+  }
+  .eyebrow {
+    font-family: var(--type);
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+  }
+  .serial-box {
+    display: inline-block;
+    padding: 4px 10px;
+    border: 1.5px solid var(--ink);
+    font-family: var(--type);
+    font-size: 14px;
+    background: var(--paper);
+  }
+  .typed {
+    font-family: var(--type);
+    background: var(--paper-2);
+    padding: 12px 14px;
+    border-left: 3px solid var(--carbon);
+    color: var(--carbon);
+    white-space: pre-wrap;
+  }
+
+  /* stamps */
+  .stamp {
+    display: inline-block;
+    padding: 5px 12px 4px;
+    border: 2.5px solid currentColor;
+    border-radius: 4px;
+    font-family: var(--serif);
+    font-weight: 900;
+    font-size: 12px;
+    line-height: 1.2;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    transform: rotate(var(--tilt, -3deg));
+    mix-blend-mode: multiply;
+    opacity: 0.92;
+    mask-image: url('/ink.png');
+    mask-size: 128px 128px;
+    -webkit-mask-image: url('/ink.png');
+    -webkit-mask-size: 128px 128px;
+  }
+  .stamp.big {
+    font-size: 18px;
+    padding: 8px 18px 6px;
+    border-width: 3.5px;
+  }
+  .stamp.slam {
+    animation: slam 320ms cubic-bezier(0.2, 1.4, 0.4, 1) both;
+  }
+  @keyframes slam {
+    0% {
+      transform: rotate(calc(var(--tilt, -3deg) - 9deg)) scale(1.7);
+      opacity: 0;
+    }
+    60% {
+      opacity: 1;
+    }
+    100% {
+      transform: rotate(var(--tilt, -3deg)) scale(1);
+      opacity: 0.92;
+    }
+  }
+
+  /* controls */
+  .btn {
+    display: inline-block;
+    padding: 11px 18px;
+    border: 2px solid var(--ink);
+    border-radius: 3px;
+    background: var(--ink);
+    color: var(--paper);
+    font: 600 15px var(--sans);
+    cursor: pointer;
+    text-decoration: none;
+    box-shadow: 0 2px 0 rgba(0, 0, 0, 0.35);
+  }
+  .btn:active {
+    transform: translateY(1px);
+    box-shadow: none;
+  }
+  .btn.secondary {
+    background: transparent;
+    color: var(--ink);
+    box-shadow: none;
+  }
+  .btn.danger {
+    border-color: var(--stamp-red);
+    background: transparent;
+    color: var(--stamp-red);
+    box-shadow: none;
+  }
+  label {
+    display: block;
+    font-family: var(--type);
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+    margin-bottom: 4px;
+  }
+  input[type='text'],
+  textarea,
+  select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 0;
+    border-bottom: 1.5px dotted var(--ink);
+    border-radius: 0;
+    background: transparent;
+    font: 16px var(--sans);
+    color: var(--ink);
+  }
+  input[type='text']:focus,
+  textarea:focus,
+  select:focus {
+    outline: none;
+    border-bottom-style: solid;
+    border-bottom-color: var(--carbon);
+  }
+  textarea {
+    min-height: 130px;
+    resize: vertical;
+    line-height: 1.5;
+  }
+  input[type='file'] {
+    font-family: var(--type);
+    font-size: 13px;
+  }
+  .field {
+    margin-bottom: 18px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .stamp.slam {
+      animation: fade 200ms ease-out both;
+    }
+    @keyframes fade {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 0.92;
+      }
+    }
+  }
+  @media (max-width: 600px) {
+    .masthead {
+      padding: 10px 14px;
+    }
+    nav a {
+      font-size: 13px;
+      padding: 6px 8px;
+    }
+    .sheet {
+      padding: 20px 16px 20px 34px;
+    }
+  }
+</style>

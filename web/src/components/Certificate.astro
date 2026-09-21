@@ -1,0 +1,214 @@
+---
+// The certificate as an object: guilloche border, stamps that overlap, a seal, a signature line
+// and the serial punched on the edge. The same layout renders to PNG in /api/certificate/[id].png.
+import {ago} from '../lib/ministry'
+
+export interface CertificateData {
+  _id: string
+  number: string
+  issuedAt: string
+  ministerNote?: string
+  timesLost?: number
+  delays?: number
+  submission?: {_id?: string; title: string; citizen: string; kind: string; serial?: number; imageUrl?: string}
+  stamps?: Array<{_key: string; verdict: string; remark?: string; department?: {name: string; stampColor?: string}}>
+}
+interface Props {
+  certificate: CertificateData
+  link?: boolean
+}
+const {certificate: c, link = true} = Astro.props
+const tilts = [-4, 3, -2, 5, -6]
+const KIND: Record<string, string> = {meme: 'a meme', name: 'a name', plan: 'a plan', idea: 'an idea', complaint: 'a complaint', other: 'a form'}
+---
+
+<article class="certificate" id={c.number}>
+  <div class="border">
+    <div class="inner">
+      <div class="corner tl"></div>
+      <div class="corner tr"></div>
+      <div class="corner bl"></div>
+      <div class="corner br"></div>
+      <p class="eyebrow">The Ministry of Approvals · Office of Certificates</p>
+      <h2 class="title">Certificate of Approval</h2>
+      <p class="type small muted">This is to certify that {KIND[c.submission?.kind ?? 'other'] ?? 'a form'} submitted by <b>{c.submission?.citizen ?? 'a citizen'}</b>, serial No. {String(c.submission?.serial ?? 0).padStart(4, '0')}, namely</p>
+      <p class="subject">{c.submission?.title ?? 'A form'}</p>
+      {c.submission?.imageUrl ? <img class="exhibit" src={c.submission.imageUrl} alt="" loading="lazy" /> : null}
+      <p class="type small muted">has passed through every department of this Ministry{c.timesLost ? `, having been lost ${c.timesLost} time${c.timesLost > 1 ? 's' : ''} on the way` : ''}{c.delays ? ` and delayed ${c.delays} time${c.delays > 1 ? 's' : ''} by the Minister` : ''}, and is hereby APPROVED.</p>
+      <div class="stamps">
+        {(c.stamps ?? []).map((s, i) => (
+          <div class="stamp-block" style={`--tilt: ${tilts[i % tilts.length]}deg`}>
+            <span class="stamp" style={`color: ${s.department?.stampColor ?? 'var(--stamp-red)'}`}>{s.department?.name ?? 'Dept.'} · {s.verdict}</span>
+            {s.remark ? <p class="remark type">{s.remark}</p> : null}
+          </div>
+        ))}
+      </div>
+      <div class="foot">
+        <div class="signature">
+          <p class="note type">{c.ministerNote ?? 'Approved without comment, which is the highest praise.'}</p>
+          <div class="sig-line"><span class="type small">The Minister</span></div>
+        </div>
+        <svg class="seal" viewBox="0 0 120 120" aria-hidden="true">
+          <circle cx="60" cy="60" r="56" fill="none" stroke="currentColor" stroke-width="3" />
+          <circle cx="60" cy="60" r="48" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="2 3" />
+          <circle cx="60" cy="60" r="30" fill="none" stroke="currentColor" stroke-width="2" />
+          <text x="60" y="66" text-anchor="middle" font-family="Fraunces, serif" font-weight="900" font-size="18" fill="currentColor">MoA</text>
+          <path id={`arc-${c._id}`} d="M 60 60 m -40 0 a 40 40 0 1 1 80 0" fill="none" />
+          <text font-family="Special Elite, monospace" font-size="8.5" fill="currentColor" letter-spacing="1.5">
+            <textPath href={`#arc-${c._id}`} startOffset="6%">SUITABLE FOR FRAMING</textPath>
+          </text>
+        </svg>
+      </div>
+      <div class="edge type">{c.number}</div>
+      <p class="issued type small muted">Issued {ago(c.issuedAt)}. Not legal tender.{link ? <> <a href={`/api/certificate/${encodeURIComponent(c._id)}.png`}>Download</a></> : null}</p>
+    </div>
+  </div>
+</article>
+
+<style>
+  .certificate {
+    background: var(--paper);
+    box-shadow: var(--shadow-paper);
+    position: relative;
+  }
+  .border {
+    padding: 10px;
+    background:
+      repeating-linear-gradient(45deg, var(--brass) 0 2px, transparent 2px 6px),
+      repeating-linear-gradient(-45deg, var(--brass) 0 2px, transparent 2px 6px);
+    background-clip: padding-box;
+  }
+  .inner {
+    position: relative;
+    background: var(--paper);
+    border: 2px solid var(--brass-2);
+    outline: 1px solid var(--brass);
+    outline-offset: 3px;
+    padding: 22px 26px 18px;
+    text-align: center;
+  }
+  .corner {
+    position: absolute;
+    width: 22px;
+    height: 22px;
+    border: 2px solid var(--brass-2);
+  }
+  .corner.tl { top: 6px; left: 6px; border-right: 0; border-bottom: 0; }
+  .corner.tr { top: 6px; right: 6px; border-left: 0; border-bottom: 0; }
+  .corner.bl { bottom: 6px; left: 6px; border-right: 0; border-top: 0; }
+  .corner.br { bottom: 6px; right: 6px; border-left: 0; border-top: 0; }
+  .eyebrow {
+    margin-bottom: 6px;
+  }
+  .title {
+    font-family: var(--serif);
+    font-weight: 900;
+    font-size: 26px;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    margin: 0 0 8px;
+    color: var(--brass-2);
+  }
+  .subject {
+    font-family: var(--serif);
+    font-weight: 700;
+    font-size: 22px;
+    line-height: 1.15;
+    margin: 6px 0 10px;
+  }
+  .exhibit {
+    display: block;
+    max-width: 60%;
+    max-height: 200px;
+    margin: 0 auto 10px;
+    border: 4px solid var(--paper);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    transform: rotate(-1.5deg);
+  }
+  .stamps {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px 14px;
+    margin: 14px 0 10px;
+    text-align: left;
+  }
+  .stamp-block {
+    max-width: 240px;
+  }
+  .remark {
+    margin: 6px 0 0;
+    font-size: 12px;
+    color: var(--ink-2);
+    line-height: 1.35;
+  }
+  .foot {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    margin-top: 14px;
+    text-align: left;
+  }
+  .signature {
+    flex: 1;
+  }
+  .note {
+    font-size: 14px;
+    color: var(--carbon);
+    margin-bottom: 18px;
+  }
+  .sig-line {
+    border-top: 1.5px solid var(--ink);
+    padding-top: 4px;
+    max-width: 220px;
+    position: relative;
+  }
+  .sig-line::before {
+    content: 'Aivaras';
+    position: absolute;
+    top: -30px;
+    left: 8px;
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 24px;
+    color: var(--carbon);
+    transform: rotate(-4deg);
+  }
+  .seal {
+    width: 110px;
+    height: 110px;
+    color: var(--stamp-red);
+    opacity: 0.85;
+    transform: rotate(8deg);
+    flex: none;
+  }
+  .edge {
+    position: absolute;
+    right: -2px;
+    top: 50%;
+    transform: rotate(90deg) translate(-50%, 0);
+    transform-origin: right top;
+    font-size: 11px;
+    color: var(--ink-2);
+    letter-spacing: 0.15em;
+  }
+  .issued {
+    margin: 12px 0 0;
+  }
+  @media (max-width: 520px) {
+    .inner {
+      padding: 18px 14px 14px;
+    }
+    .title {
+      font-size: 20px;
+    }
+    .subject {
+      font-size: 18px;
+    }
+    .seal {
+      width: 80px;
+      height: 80px;
+    }
+  }
+</style>

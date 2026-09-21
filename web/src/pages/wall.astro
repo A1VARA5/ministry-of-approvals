@@ -1,0 +1,130 @@
+---
+import Layout from '../layouts/Layout.astro'
+import Certificate, {type CertificateData} from '../components/Certificate.astro'
+import {CERTIFICATE_PROJECTION, content} from '../lib/ministry'
+
+export const prerender = false
+
+const certificates = await content.fetch<CertificateData[]>(
+  `*[_type == "certificate"] | order(issuedAt desc)[0...40]${CERTIFICATE_PROJECTION}`,
+)
+const tilts = [-1.2, 0.8, -0.6, 1.4, -1.6, 0.5]
+---
+
+<Layout title="Wall of Certificates" wide>
+  <div class="wall-head">
+    <p class="eyebrow">Office of Certificates · Public display</p>
+    <h1>The Wall of Certificates</h1>
+    <p class="muted">
+      Every form that survived three departments and a Minister. The stamps are the clerks' own words, copied from the
+      workflow at the moment of approval. Frames are hung by the Archive, which explains the angles.
+    </p>
+  </div>
+  <div class="wall">
+    <div class="dado" aria-hidden="true"></div>
+    {certificates.length === 0 ? <p class="sheet empty type">Nothing on the wall yet. The corridor is long.</p> : null}
+    <div class="frames">
+      {certificates.map((c, i) => (
+        <div class="frame" style={`--tilt: ${tilts[i % tilts.length]}deg`}>
+          <div class="hook" aria-hidden="true"></div>
+          <Certificate certificate={c} />
+          <div class="plaque type">
+            {c.number} · {new Date(c.issuedAt).toLocaleDateString('en-GB', {day: 'numeric', month: 'short', year: 'numeric'})}
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+</Layout>
+
+<style>
+  .wall-head {
+    max-width: 760px;
+    margin-bottom: 20px;
+  }
+  .wall {
+    position: relative;
+    padding: 40px 20px 70px;
+    margin: 0 -16px;
+    background: linear-gradient(180deg, var(--plaster-2), var(--plaster) 60%);
+    border-top: 1px solid var(--rule);
+  }
+  .dado {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 40px;
+    background: var(--dado);
+    border-top: 3px solid #35493a;
+  }
+  .frames {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    gap: 44px 34px;
+    align-items: start;
+    position: relative;
+  }
+  .frame {
+    position: relative;
+    padding: 12px;
+    background: linear-gradient(135deg, #d9b54a, #8a6d14 40%, #c9a227 60%, #7a5f10);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.35), inset 0 0 0 3px rgba(0, 0, 0, 0.25);
+    transform: rotate(var(--tilt));
+    transform-origin: top center;
+  }
+  .hook {
+    position: absolute;
+    top: -22px;
+    left: 50%;
+    width: 10px;
+    height: 10px;
+    margin-left: -5px;
+    border-radius: 50%;
+    background: #8a6d14;
+    box-shadow: 0 12px 0 -2px #8a6d14;
+  }
+  .hook::before,
+  .hook::after {
+    content: '';
+    position: absolute;
+    top: 6px;
+    width: 1.5px;
+    height: 20px;
+    background: rgba(0, 0, 0, 0.5);
+  }
+  .hook::before {
+    left: 4px;
+    transform: rotate(-30deg);
+    transform-origin: top;
+  }
+  .hook::after {
+    left: 4px;
+    transform: rotate(30deg);
+    transform-origin: top;
+  }
+  .plaque {
+    position: absolute;
+    left: 50%;
+    bottom: -30px;
+    transform: translateX(-50%);
+    padding: 3px 10px;
+    background: linear-gradient(#e2c25a, #a8871b);
+    border: 1px solid #6e5410;
+    font-size: 11px;
+    color: #2b2107;
+    white-space: nowrap;
+    box-shadow: 0 2px 3px rgba(0, 0, 0, 0.3);
+  }
+  .empty {
+    max-width: 420px;
+  }
+  @media (max-width: 500px) {
+    .frames {
+      grid-template-columns: 1fr;
+    }
+    .frame {
+      transform: none;
+    }
+  }
+</style>
